@@ -4,7 +4,6 @@
   become: true
 
   tasks:
-    # משימה חדשה: עדכון רשימת החבילות של אובונטו
     - name: update apt cache
       apt:
         update_cache: yes
