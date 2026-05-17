@@ -31,9 +31,9 @@ pipeline {
                                                  usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
                     script {
                         if (params.ACTION == 'apply') {
-                            sh 'terraform apply -auto-approve'
+                            bat 'terraform apply -auto-approve'
                         } else {
-                            sh 'terraform destroy -auto-approve'
+                            bat 'terraform destroy -auto-approve'
                         }
                     }
                 }
@@ -45,22 +45,24 @@ pipeline {
             when { expression { params.ACTION == 'apply' } }
             steps {
                 script {
-                    // שליפת ה-IP מטרפורם
-                    def instanceIp = sh(script: "terraform output -raw instance_ip", returnStdout: true).trim()
+                    // שליפת ה-IP מ-Terraform בסביבת Windows
+                    def instanceIp = bat(script: "terraform output -raw instance_ip", returnStdout: true).trim()
                     
-                    // יצירת קובץ אינוונטורי זמני
-                    writeFile file: 'inventory_fixed.ini', text: "[all]\n${instanceIp}"
+                    // הסרת שורות מיותרות ש-bat עלול להחזיר כדי לקבל רק את ה-IP נקי
+                    def ipLines = instanceIp.readLines()
+                    def cleanIp = ipLines[ipLines.size() - 1].trim()
+
+                    // יצירת קובץ ה-Inventory הדינמי
+                    writeFile file: 'inventory_fixed.ini', text: "[all]\n${cleanIp}"
                     
-                    // הרצת Ansible עם המפתח מה-Credentials
+                    // הרצת ה-Playbook עם ה-Credentials של ה-SSH
                     withCredentials([sshUserPrivateKey(credentialsId: 'aws-ssh-key', 
                                                      keyFileVariable: 'SSH_KEY', 
                                                      usernameVariable: 'SSH_USER')]) {
-                        sh """
-                            export ANSIBLE_CONFIG=./ansible.cfg
-                            export ANSIBLE_HOST_KEY_CHECKING=False
-                            ansible-playbook -i inventory_fixed.ini instance.yml \
-                            --user ${SSH_USER} \
-                            --private-key ${SSH_KEY}
+                        bat """
+                            set ANSIBLE_CONFIG=./ansible.cfg
+                            set ANSIBLE_HOST_KEY_CHECKING=False
+                            ansible-playbook -i inventory_fixed.ini instance.yml --user %SSH_USER% --private-key %SSH_KEY%
                         """
                     }
                 }
@@ -73,11 +75,14 @@ pipeline {
             script {
                 // הצגת הכתובת רק אם המכונה הוקמה בהצלחה
                 if (params.ACTION == 'apply') {
-                    def finalIp = sh(script: "terraform output -raw instance_ip", returnStdout: true).trim()
+                    def instanceIp = bat(script: "terraform output -raw instance_ip", returnStdout: true).trim()
+                    def ipLines = instanceIp.readLines()
+                    def finalIp = ipLines[ipLines.size() - 1].trim()
+                    
                     echo "-----------------------------------------------------------"
                     echo "DEPLOYMENT SUCCESSFUL!"
                     echo "New VM IP Address: ${finalIp}"
-                    echo "Web URL: http://${finalIp}/web/index.php"
+                    echo "Web URL: http://${finalIp}/web/index.html"
                     echo "-----------------------------------------------------------"
                 } else {
                     echo "-----------------------------------------------------------"
@@ -87,8 +92,12 @@ pipeline {
             }
         }
         always {
-            // ניקוי קבצים זמניים
-            sh 'rm -f inventory_fixed.ini'
+            script {
+                // ניקוי קבצים זמניים בסגנון Windows (בדיקה אם הקובץ קיים לפני מחיקה)
+                if (fileExists('inventory_fixed.ini')) {
+                    bat 'del /f /q inventory_fixed.ini'
+                }
+            }
         }
     }
 }
