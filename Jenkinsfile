@@ -20,7 +20,8 @@ pipeline {
         
         stage('Terraform Init') {
             steps {
-                bat 'terraform init'
+                // תיקון: שונה מ-bat ל-sh עבור שרת הלינוקס החדש
+                sh 'terraform init'
             }
         }
 
@@ -31,9 +32,9 @@ pipeline {
                                                  usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
                     script {
                         if (params.ACTION == 'apply') {
-                            bat 'terraform apply -auto-approve'
+                            sh 'terraform apply -auto-approve'
                         } else {
-                            bat 'terraform destroy -auto-approve'
+                            sh 'terraform destroy -auto-approve'
                         }
                     }
                 }
@@ -45,24 +46,22 @@ pipeline {
             when { expression { params.ACTION == 'apply' } }
             steps {
                 script {
-                    // שליפת ה-IP מ-Terraform בסביבת Windows
-                    def instanceIp = bat(script: "terraform output -raw instance_ip", returnStdout: true).trim()
+                    // שליפת ה-IP מטרפורם
+                    def instanceIp = sh(script: "terraform output -raw instance_ip", returnStdout: true).trim()
                     
-                    // הסרת שורות מיותרות ש-bat עלול להחזיר כדי לקבל רק את ה-IP נקי
-                    def ipLines = instanceIp.readLines()
-                    def cleanIp = ipLines[ipLines.size() - 1].trim()
-
-                    // יצירת קובץ ה-Inventory הדינמי
-                    writeFile file: 'inventory_fixed.ini', text: "[all]\n${cleanIp}"
+                    // יצירת קובץ אינוונטורי זמני בלינוקס
+                    writeFile file: 'inventory_fixed.ini', text: "[all]\n${instanceIp}"
                     
-                    // הרצת ה-Playbook עם ה-Credentials של ה-SSH
+                    // הרצת Ansible עם המפתח מה-Credentials של ג'נקינס
                     withCredentials([sshUserPrivateKey(credentialsId: 'aws-ssh-key', 
-                                                     keyFileVariable: 'SSH_KEY', 
-                                                     usernameVariable: 'SSH_USER')]) {
-                        bat """
-                            set ANSIBLE_CONFIG=./ansible.cfg
-                            set ANSIBLE_HOST_KEY_CHECKING=False
-                            ansible-playbook -i inventory_fixed.ini instance.yml --user %SSH_USER% --private-key %SSH_KEY%
+                                                       keyFileVariable: 'SSH_KEY', 
+                                                       usernameVariable: 'SSH_USER')]) {
+                        sh """
+                            export ANSIBLE_CONFIG=./ansible.cfg
+                            export ANSIBLE_HOST_KEY_CHECKING=False
+                            ansible-playbook -i inventory_fixed.ini instance.yml \
+                            --user ${SSH_USER} \
+                            --private-key ${SSH_KEY}
                         """
                     }
                 }
@@ -75,14 +74,11 @@ pipeline {
             script {
                 // הצגת הכתובת רק אם המכונה הוקמה בהצלחה
                 if (params.ACTION == 'apply') {
-                    def instanceIp = bat(script: "terraform output -raw instance_ip", returnStdout: true).trim()
-                    def ipLines = instanceIp.readLines()
-                    def finalIp = ipLines[ipLines.size() - 1].trim()
-                    
+                    def finalIp = sh(script: "terraform output -raw instance_ip", returnStdout: true).trim()
                     echo "-----------------------------------------------------------"
                     echo "DEPLOYMENT SUCCESSFUL!"
                     echo "New VM IP Address: ${finalIp}"
-                    echo "Web URL: http://${finalIp}/web/index.html"
+                    echo "Web URL: http://${finalIp}/web/index.php"
                     echo "-----------------------------------------------------------"
                 } else {
                     echo "-----------------------------------------------------------"
@@ -92,12 +88,8 @@ pipeline {
             }
         }
         always {
-            script {
-                // ניקוי קבצים זמניים בסגנון Windows (בדיקה אם הקובץ קיים לפני מחיקה)
-                if (fileExists('inventory_fixed.ini')) {
-                    bat 'del /f /q inventory_fixed.ini'
-                }
-            }
+            // ניקוי קבצים זמניים בסיום הריצה
+            sh 'rm -f inventory_fixed.ini'
         }
     }
 }
