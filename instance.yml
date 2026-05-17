@@ -4,6 +4,12 @@
   become: true
 
   tasks:
+    # משימה חדשה: עדכון רשימת החבילות של אובונטו
+    - name: update apt cache
+      apt:
+        update_cache: yes
+        force_apt_get: yes
+
     - name: installing apache2
       package:
         name: apache2
