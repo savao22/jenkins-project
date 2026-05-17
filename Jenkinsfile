@@ -1,7 +1,6 @@
 pipeline {
     agent any
     
-    // מאפשר לבחור בין הקמה למחיקה בהרצה ידנית (Build with Parameters)
     parameters {
         choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'בחר האם להקים או למחוק את התשתית')
     }
@@ -13,14 +12,12 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // מוריד את הקוד מה-Repository
                 checkout scm
             }
         }
         
         stage('Terraform Init') {
             steps {
-                // תיקון: שונה מ-bat ל-sh עבור שרת הלינוקס החדש
                 sh 'terraform init'
             }
         }
@@ -42,26 +39,19 @@ pipeline {
         }
 
         stage('Run Ansible Playbook') {
-            // השלב הזה ירוץ רק אם בחרנו להקים את המכונה (apply)
             when { expression { params.ACTION == 'apply' } }
             steps {
                 script {
-                    // שליפת ה-IP מטרפורם
                     def instanceIp = sh(script: "terraform output -raw instance_ip", returnStdout: true).trim()
-                    
-                    // יצירת קובץ אינוונטורי זמני בלינוקס
                     writeFile file: 'inventory_fixed.ini', text: "[all]\n${instanceIp}"
                     
-                    // הרצת Ansible עם המפתח מה-Credentials של ג'נקינס
                     withCredentials([sshUserPrivateKey(credentialsId: 'aws-ssh-key', 
                                                        keyFileVariable: 'SSH_KEY', 
                                                        usernameVariable: 'SSH_USER')]) {
                         sh """
                             export ANSIBLE_CONFIG=./ansible.cfg
                             export ANSIBLE_HOST_KEY_CHECKING=False
-                            ansible-playbook -i inventory_fixed.ini instance.yml \
-                            --user ${SSH_USER} \
-                            --private-key ${SSH_KEY}
+                            ansible-playbook -i inventory_fixed.ini instance.yml --user "${SSH_USER}" --private-key "${SSH_KEY}"
                         """
                     }
                 }
@@ -72,7 +62,6 @@ pipeline {
     post {
         success {
             script {
-                // הצגת הכתובת רק אם המכונה הוקמה בהצלחה
                 if (params.ACTION == 'apply') {
                     def finalIp = sh(script: "terraform output -raw instance_ip", returnStdout: true).trim()
                     echo "-----------------------------------------------------------"
@@ -88,7 +77,6 @@ pipeline {
             }
         }
         always {
-            // ניקוי קבצים זמניים בסיום הריצה
             sh 'rm -f inventory_fixed.ini'
         }
     }
