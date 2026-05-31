@@ -10,14 +10,14 @@ resource "aws_security_group" "jenkins_ansible_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # מאפשר גישה מכל מקום לטובת ה-Pipeline
+    cidr_blocks = ["0.0.0.0/0"] 
   }
 
   ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # מאפשר לכולם לגלוש לאתר שלך
+    cidr_blocks = ["0.0.0.0/0"] 
   }
 
   egress {
