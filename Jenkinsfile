@@ -1,7 +1,6 @@
 pipeline {
     agent any
     
-    // מאפשר לבחור בין הקמה למחיקה בהרצה ידנית (Build with Parameters)
     parameters {
         choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'בחר האם להקים או למחוק את התשתית')
     }
@@ -13,7 +12,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // מוריד את הקוד מה-Repository
+              
                 checkout scm
             }
         }
@@ -41,17 +40,15 @@ pipeline {
         }
 
         stage('Run Ansible Playbook') {
-            // השלב הזה ירוץ רק אם בחרנו להקים את המכונה (apply)
+         
             when { expression { params.ACTION == 'apply' } }
             steps {
                 script {
-                    // שליפת ה-IP מטרפורם
+                    
                     def instanceIp = sh(script: "terraform output -raw instance_ip", returnStdout: true).trim()
                     
-                    // יצירת קובץ אינוונטורי זמני
                     writeFile file: 'inventory_fixed.ini', text: "[all]\n${instanceIp}"
                     
-                    // הרצת Ansible עם המפתח מה-Credentials
                     withCredentials([sshUserPrivateKey(credentialsId: 'aws-ssh-key', 
                                                      keyFileVariable: 'SSH_KEY', 
                                                      usernameVariable: 'SSH_USER')]) {
@@ -71,7 +68,6 @@ pipeline {
     post {
         success {
             script {
-                // הצגת הכתובת רק אם המכונה הוקמה בהצלחה
                 if (params.ACTION == 'apply') {
                     def finalIp = sh(script: "terraform output -raw instance_ip", returnStdout: true).trim()
                     echo "-----------------------------------------------------------"
@@ -87,7 +83,6 @@ pipeline {
             }
         }
         always {
-            // ניקוי קבצים זמניים
             sh 'rm -f inventory_fixed.ini'
         }
     }
