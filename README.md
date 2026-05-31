@@ -30,4 +30,4 @@ The pipeline orchestrates and deploys the following architecture layers dynamica
 ## 📊 Live Web Deployment Dashboard
 Once the pipeline stage `Run Ansible Playbook` completes successfully, you can access the public live web server dashboard directly via the generated AWS EC2 public IP printed in the Jenkins post-actions log:
 
-* **Web URL:** `http://52.90.109.86/index.html`
+* **Web URL:** http://52.90.109.86/index.html
