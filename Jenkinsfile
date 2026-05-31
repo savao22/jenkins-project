@@ -42,12 +42,8 @@ pipeline {
             when { expression { params.ACTION == 'apply' } }
             steps {
                 script {
-                    // שלפת ה-IP הציבורי שנוצר על ידי טרפורם
                     def instanceIp = sh(script: "terraform output -raw instance_ip", returnStdout: true).trim()
-                    // יצירת קובץ ה-Inventory עם ה-IP המעודכן
                     writeFile file: 'inventory_fixed.ini', text: "[all]\n${instanceIp}"
-                    
-                    // שימוש במפתח ה-SSH שהגדרנו בג'נקינס
                     withCredentials([sshUserPrivateKey(credentialsId: 'aws-ssh-key', 
                                                        keyFileVariable: 'SSH_KEY', 
                                                        usernameVariable: 'SSH_USER')]) {
@@ -80,7 +76,6 @@ pipeline {
             }
         }
         always {
-            // מחיקת קובץ ה-Inventory הזמני בסיום הריצה
             sh 'rm -f inventory_fixed.ini'
         }
     }
