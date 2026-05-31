@@ -36,7 +36,8 @@
         state: directory
         mode: '0755'
 
-    - name: cloning git repo
-      ansible.builtin.git:
-        repo: "https://github.com/ishajain140/index_files.git/"
-        dest: /var/www/html/web
+- name: Copy Website files to AWS EC2
+      ansible.builtin.copy:
+        src: ./website/
+        dest: /var/www/html/
+        mode: '0755'
