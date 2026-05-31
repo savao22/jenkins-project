@@ -66,7 +66,7 @@ pipeline {
                     echo "-----------------------------------------------------------"
                     echo "DEPLOYMENT SUCCESSFUL!"
                     echo "New VM IP Address: ${finalIp}"
-                    echo "Web URL: http://${finalIp}/web/index.php"
+                    echo "Web URL: http://${finalIp}/index.html"
                     echo "-----------------------------------------------------------"
                 } else {
                     echo "-----------------------------------------------------------"
