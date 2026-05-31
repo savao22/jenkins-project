@@ -36,7 +36,7 @@
         state: directory
         mode: '0755'
 
-- name: Copy Website files to AWS EC2
+    - name: Copy Website files to AWS EC2
       ansible.builtin.copy:
         src: "./website/"
         dest: "/var/www/html/"
